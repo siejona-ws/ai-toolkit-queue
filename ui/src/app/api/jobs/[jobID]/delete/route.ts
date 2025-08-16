@@ -24,6 +24,11 @@ export async function GET(request: NextRequest, { params }: { params: { jobID: s
     fs.rmdirSync(trainingFolder, { recursive: true });
   }
 
+  // Remove job from queue if it exists
+  await prisma.queue.deleteMany({
+    where: { job_id: jobID },
+  });
+
   await prisma.job.delete({
     where: { id: jobID },
   });

@@ -69,6 +69,8 @@ export default function JobOverview({ job }: JobOverviewProps) {
         return 'bg-blue-500/10 text-blue-500';
       case 'error':
         return 'bg-rose-500/10 text-rose-500';
+      case 'queued':
+        return 'bg-purple-500/10 text-purple-500';
       default:
         return 'bg-gray-500/10 text-gray-400';
     }

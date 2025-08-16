@@ -57,8 +57,8 @@ export const getJobConfig = (job: Job) => {
 export const getAvaliableJobActions = (job: Job) => {
   const jobConfig = getJobConfig(job);
   const isStopping = job.stop && job.status === 'running';
-  const canDelete = ['completed', 'stopped', 'error'].includes(job.status) && !isStopping;
-  const canEdit = ['completed', 'stopped', 'error'].includes(job.status) && !isStopping;
+  const canDelete = ['completed', 'stopped', 'error', 'queued'].includes(job.status) && !isStopping;
+  const canEdit = ['completed', 'stopped', 'error', 'queued'].includes(job.status) && !isStopping;
   const canStop = job.status === 'running' && !isStopping;
   let canStart = ['stopped', 'error'].includes(job.status) && !isStopping;
   // can resume if more steps were added

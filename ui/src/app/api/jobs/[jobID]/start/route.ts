@@ -5,13 +5,13 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { getTrainingFolder, getHFToken } from '@/server/settings';
+import { getTrainingFolder, getHFToken, getJobQueueing } from '@/server/settings';
 const isWindows = process.platform === 'win32';
 
 const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest, { params }: { params: { jobID: string } }) {
-  const { jobID } = await params;
+  const { jobID } = params;
 
   const job = await prisma.job.findUnique({
     where: { id: jobID },
@@ -21,6 +21,44 @@ export async function GET(request: NextRequest, { params }: { params: { jobID: s
     return NextResponse.json({ error: 'Job not found' }, { status: 404 });
   }
 
+  // Check if job queueing is enabled
+  const isQueueingEnabled = await getJobQueueing();
+  
+  if (isQueueingEnabled) {
+    // Check if there are any running jobs
+    const runningJobs = await prisma.job.findMany({
+      where: { status: 'running' },
+    });
+
+    if (runningJobs.length > 0) {
+      // Add job to queue
+      await prisma.queue.create({
+        data: {
+          channel: 'training',
+          job_id: jobID,
+          status: 'waiting',
+        },
+      });
+
+      // Update job status to queued
+      await prisma.job.update({
+        where: { id: jobID },
+        data: {
+          status: 'queued',
+          stop: false,
+          info: 'Job queued - waiting for other jobs to complete',
+        },
+      });
+
+      return NextResponse.json({ success: true, message: 'Job added to queue' });
+    }
+  }
+
+  // If queueing is disabled or no jobs are running, start the job immediately
+  return await startJobImmediately(jobID, job);
+}
+
+async function startJobImmediately(jobID: string, job: any) {
   // update job status to 'running'
   await prisma.job.update({
     where: { id: jobID },
@@ -175,6 +213,9 @@ export async function GET(request: NextRequest, { params }: { params: { jobID: s
             },
           });
         }
+        
+        // Process the queue after job completion
+        await processQueue();
       });
 
       // Wait 30 seconds before releasing the process
@@ -212,4 +253,53 @@ export async function GET(request: NextRequest, { params }: { params: { jobID: s
       { status: 500 },
     );
   }
+}
+
+async function processQueue() {
+  // Check if job queueing is enabled
+  const isQueueingEnabled = await getJobQueueing();
+  if (!isQueueingEnabled) {
+    return; // Don't process queue if queueing is disabled
+  }
+
+  // Check if there are any running jobs
+  const runningJobs = await prisma.job.findMany({
+    where: { status: 'running' },
+  });
+
+  if (runningJobs.length > 0) {
+    return; // Don't start new jobs if there are already running jobs
+  }
+
+  // Get the next job in the queue
+  const nextQueueItem = await prisma.queue.findFirst({
+    where: { status: 'waiting' },
+    orderBy: { created_at: 'asc' },
+  });
+
+  if (!nextQueueItem) {
+    return; // No jobs in queue
+  }
+
+  // Get the job details
+  const job = await prisma.job.findUnique({
+    where: { id: nextQueueItem.job_id },
+  });
+
+  if (!job) {
+    // Job not found, remove from queue
+    await prisma.queue.delete({
+      where: { id: nextQueueItem.id },
+    });
+    return;
+  }
+
+  // Remove the job from the queue
+  await prisma.queue.delete({
+    where: { id: nextQueueItem.id },
+  });
+
+  // Start the job
+  console.log(`Starting queued job: ${job.name} (${job.id})`);
+  await startJobImmediately(nextQueueItem.job_id, job);
 }

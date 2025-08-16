@@ -5,6 +5,9 @@
         "target": "es2020",
         "outDir": "dist",
         "moduleResolution": "node",
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "skipLibCheck": true,
         "types": [
             "node"
         ]

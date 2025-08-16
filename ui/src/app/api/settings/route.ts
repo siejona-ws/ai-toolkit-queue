@@ -20,6 +20,12 @@ export async function GET() {
     if (!settingsObject.DATASETS_FOLDER || settingsObject.DATASETS_FOLDER === '') {
       settingsObject.DATASETS_FOLDER = defaultDatasetsFolder;
     }
+    // Convert JOB_QUEUEING to boolean
+    if (settingsObject.JOB_QUEUEING) {
+      settingsObject.JOB_QUEUEING = settingsObject.JOB_QUEUEING === 'true';
+    } else {
+      settingsObject.JOB_QUEUEING = false;
+    }
     return NextResponse.json(settingsObject);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
@@ -29,9 +35,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { HF_TOKEN, TRAINING_FOLDER, DATASETS_FOLDER } = body;
+    const { HF_TOKEN, TRAINING_FOLDER, DATASETS_FOLDER, JOB_QUEUEING } = body;
 
-    // Upsert both settings
+    // Upsert all settings
     await Promise.all([
       prisma.settings.upsert({
         where: { key: 'HF_TOKEN' },
@@ -47,6 +53,11 @@ export async function POST(request: Request) {
         where: { key: 'DATASETS_FOLDER' },
         update: { value: DATASETS_FOLDER },
         create: { key: 'DATASETS_FOLDER', value: DATASETS_FOLDER },
+      }),
+      prisma.settings.upsert({
+        where: { key: 'JOB_QUEUEING' },
+        update: { value: String(JOB_QUEUEING) },
+        create: { key: 'JOB_QUEUEING', value: String(JOB_QUEUEING) },
       }),
     ]);
 

@@ -85,3 +85,22 @@ export const getDataRoot = async () => {
   myCache.set(key, dataRoot);
   return dataRoot;
 };
+
+export const getJobQueueing = async () => {
+  const key = 'JOB_QUEUEING';
+  let jobQueueing = myCache.get(key) as boolean;
+  if (jobQueueing !== undefined) {
+    return jobQueueing;
+  }
+  let row = await prisma.settings.findFirst({
+    where: {
+      key: key,
+    },
+  });
+  jobQueueing = false; // default to false (parallel mode)
+  if (row?.value && row.value !== '') {
+    jobQueueing = row.value === 'true';
+  }
+  myCache.set(key, jobQueueing);
+  return jobQueueing;
+};
