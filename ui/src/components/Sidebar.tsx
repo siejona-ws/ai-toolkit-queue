@@ -20,7 +20,7 @@ const Sidebar = () => {
         <h1 className="text-l">
           <img src="/ostris_logo.png" alt="Ostris AI Toolkit" className="w-auto h-7 mr-3 inline" />
           <span className="font-bold uppercase">Ostris</span>
-          <span className="ml-2 uppercase text-gray-300">AI-Toolkit</span>
+          <span className="ml-2 uppercase text-gray-300">AI-Toolkit-SJ</span>
         </h1>
       </div>
       <nav className="flex-1">
